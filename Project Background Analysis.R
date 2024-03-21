@@ -10,7 +10,9 @@ project_data <- read_csv("project_data.csv")
 
 # Make a subset of the data that has only the variables of interest:
 table <- subset(project_data, select = c(AGER, RACE, PARMARR, INTACT18, TOTINCR, HIEDUC, RELRAISD, ATTND14, discuss_topic8, premarital))
-table <- na.omit(table[, c("AGER", "RACE", "PARMARR", "INTACT18", "TOTINCR", "HIEDUC", "RELRAISD", "ATTND14")])
+
+# Remove the null values from premarital (due to missing answers)
+table <- table[!is.na(table$premarital), ]
 
 # Make variables into factors as necessary
 table$discuss_topic8 <- factor(table$discuss_topic8, levels = c(0,1), labels = c("Discussed Abstinence from Premarital Sex", "Did Not Discuss Abstinence from Premarital Sex"))
@@ -25,7 +27,6 @@ label(table$TOTINCR) <- "Family Income"
 label(table$HIEDUC) <- "Highest Level of Education Achieved"
 label(table$RELRAISD) <- "Religion Raised In"
 label(table$ATTND14) <- "Frequency of Church Attendance at 14"
-label(table$discuss_topic8) <- "Parents Taught Abstinence From Premarital Sex"
 
 # Actually build the Table 1
 my_table <- table1(~ AGER + RACE + PARMARR + INTACT18 + TOTINCR + HIEDUC + RELRAISD + ATTND14 | discuss_topic8, data = table)

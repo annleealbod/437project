@@ -53,7 +53,7 @@ data class.project_data; set work.data1; * Creating a new dataset from the raw 2
    
    * Recoding a binary variable that indicates if the respondent had premarital sex;
    	if (PTSB4MAR = 0) or (EVERSEX = 5) then premarital = 0; *if they had 0 sexual partners before marriage, or they've never had sex, then they haven't had premarital sex;
-	else if ((EVERMARRY = 0) and (EVERSEX = 1)) or ((PTSB4MAR ge 1) and (PTSB4MAR le 20)) then premarital = 1; *either they haven't been married but have had sex, or they have been married and had 1 or more partners before marriage;
+	else if ((EVRMARRY = 0) and (EVERSEX = 1)) or ((PTSB4MAR ge 1) and (PTSB4MAR le 20)) then premarital = 1; *either they haven't been married but have had sex, or they have been married and had 1 or more partners before marriage;
 	else premarital = .;
 
 	* Only respondents age 25 or younger could answer the above question, so now I'll filter the data to just that group;
@@ -67,6 +67,3 @@ PROC EXPORT DATA=class.project_data
     OUTFILE='/home/u63737772/437Project/project_data.csv'
     DBMS=CSV REPLACE;
 RUN;
-
-
- 

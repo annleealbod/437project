@@ -5,7 +5,7 @@ library(kableExtra)
 library(readr)
 
 # Load SAS data
-project_data <- read_csv("C:/Users/annab/Downloads/project_data.csv")
+project_data <- read_csv("project_data.csv")
 
 # General table one stuff below, need to change to new data:
 

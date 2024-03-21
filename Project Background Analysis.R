@@ -9,20 +9,22 @@ library(tableone)
 project_data <- read_csv("project_data.csv")
 
 # Make a subset of the data that has only the variables of interest:
-table <- subset(project_data, select = c(AGER, RACE, PARMARR, INTACT18, TOTINCR, HIEDUC, RELRAISD, ATTND14, RELIGION, EVRMARRY, ONOWN18, VRY1STAG, topics_discussed_count, discuss_topic1,
+subdata <- subset(project_data, select = c(AGER, RACE, PARMARR, INTACT18, TOTINCR, HIEDUC, RELRAISD, ATTND14, RELIGION, EVRMARRY, ONOWN18, VRY1STAG, topics_discussed_count, discuss_topic1,
 discuss_topic2, discuss_topic3, discuss_topic4, discuss_topic5, discuss_topic6, discuss_topic8, premarital))
 
 # Remove the null values from premarital (due to missing answers):
-table <- table[!is.na(table$premarital), ]
+subdata <- subdata[!is.na(subdata$premarital), ]
+
+table(subdata$discuss_topic6)
 
 # Make variables into factors as necessary:
-table$discuss_topic8 <- factor(table$discuss_topic8, levels = c(0,1), labels = c("Taught to Abstain From PS", "Not Taught to Abstain From PS"))
-table$discuss_topic1 <- factor(table$discuss_topic1, levels = c(0,1), labels = c("No, Yes"))
-table$discuss_topic2 <- factor(table$discuss_topic2, levels = c(0,1), labels = c("No, Yes"))
-table$discuss_topic3 <- factor(table$discuss_topic3, levels = c(0,1), labels = c("No, Yes"))
-table$discuss_topic4 <- factor(table$discuss_topic4, levels = c(0,1), labels = c("No, Yes"))
-table$discuss_topic5 <- factor(table$discuss_topic5, levels = c(0,1), labels = c("No, Yes"))
-table$discuss_topic6 <- factor(table$discuss_topic6, levels = c(0,1), labels = c("No, Yes"))
+subdata$discuss_topic8 <- factor(subdata$discuss_topic8, levels = c(0,1), labels = c("Taught to Abstain From PS", "Not Taught to Abstain From PS"))
+subdata$discuss_topic1 <- factor(subdata$discuss_topic1, levels = c(0,1), labels = c("No", "Yes"))
+subdata$discuss_topic2 <- factor(subdata$discuss_topic2, levels = c(0,1), labels = c("No", "Yes"))
+subdata$discuss_topic3 <- factor(subdata$discuss_topic3, levels = c(0,1), labels = c("No", "Yes"))
+subdata$discuss_topic4 <- factor(subdata$discuss_topic4, levels = c(0,1), labels = c("No", "Yes"))
+subdata$discuss_topic5 <- factor(subdata$discuss_topic5, levels = c(0,1), labels = c("No", "Yes"))
+subdata$discuss_topic6 <- factor(subdata$discuss_topic6, levels = c(0,1), labels = c("No", "Yes"))
 
 # Label variables:
 label(table$AGER) <- "Age"

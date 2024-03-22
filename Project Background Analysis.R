@@ -4,6 +4,10 @@ library(table1)
 library(kableExtra)
 library(readr)
 library(tableone)
+library(ggplot2)
+library(kableExtra)
+library(gridExtra)
+library(webshot2)
 
 # Load SAS data:
 project_data <- read_csv("project_data.csv")
@@ -86,10 +90,6 @@ label(subdata$premarital) <- "Had Premarital Sex"
 my_table <- table1(~ AGER + RACE + PARMARR + INTACT18 + TOTINCR + HIEDUC + RELRAISD + ATTND14 + EVRMARRY + ONOWN18 + VRY1STAG + topics_discussed_count + discuss_topic1 +
 discuss_topic2 + discuss_topic3 + discuss_topic4 + discuss_topic5 + discuss_topic6 | discuss_topic8, data = subdata, render = rndr, render.continuous=c("Mean (SD)"="MEAN (SD)"))
 
-
-
-
-
 # Now on to evidence of association:
 # Create a 2x2 matrix
 table_counts <- table(subdata$discuss_topic8, subdata$premarital)
@@ -99,10 +99,6 @@ matrix_counts <- as.matrix(table_counts)
 # Add row and column names for clarity
 rownames(matrix_counts) <- c("Not Taught", "Taught")
 colnames(matrix_counts) <- c("No Premarital Sex", "Premarital Sex")
-
-# Display the matrix
-matrix_counts
-
 
 # Performing a fisher exact test:
 fisher.test(matrix_counts)

@@ -55,7 +55,7 @@ rel_order <- c("Catholic", "Baptist/Southern Baptist", "Methodist, Lutheran, Pre
 subdata$RELRAISD <- factor(subdata$RELRAISD, levels = rel_order)
 
 chufreq_order <- c("More than once a week", "Once a week", "2-3 times a month", "Once a month (about 12 times a year)", "3-11 times a year", "Once or twice a year",
-"Never", "Refused", "Missing")
+"Never", "Refused")
 subdata$ATTND14 <- factor(subdata$ATTND14, levels = chufreq_order)
 
 
@@ -85,3 +85,24 @@ label(subdata$premarital) <- "Had Premarital Sex"
 # Actually build the Table 1:
 my_table <- table1(~ AGER + RACE + PARMARR + INTACT18 + TOTINCR + HIEDUC + RELRAISD + ATTND14 + EVRMARRY + ONOWN18 + VRY1STAG + topics_discussed_count + discuss_topic1 +
 discuss_topic2 + discuss_topic3 + discuss_topic4 + discuss_topic5 + discuss_topic6 | discuss_topic8, data = subdata, render = rndr, render.continuous=c("Mean (SD)"="MEAN (SD)"))
+
+
+
+
+
+# Now on to evidence of association:
+# Create a 2x2 matrix
+table_counts <- table(subdata$discuss_topic8, subdata$premarital)
+
+matrix_counts <- as.matrix(table_counts)
+
+# Add row and column names for clarity
+rownames(matrix_counts) <- c("Not Taught", "Taught")
+colnames(matrix_counts) <- c("No Premarital Sex", "Premarital Sex")
+
+# Display the matrix
+matrix_counts
+
+
+# Performing a fisher exact test:
+fisher.test(matrix_counts)

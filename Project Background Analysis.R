@@ -4,6 +4,10 @@ library(table1)
 library(kableExtra)
 library(readr)
 library(tableone)
+library(tidyverse)
+library(MatchIt)
+library(Matching)
+
 
 # Load SAS data:
 project_data <- read_csv("project_data.csv")
@@ -88,8 +92,6 @@ discuss_topic2 + discuss_topic3 + discuss_topic4 + discuss_topic5 + discuss_topi
 
 
 
-
-
 # Now on to evidence of association:
 # Create a 2x2 matrix
 table_counts <- table(subdata$discuss_topic8, subdata$premarital)
@@ -103,6 +105,66 @@ colnames(matrix_counts) <- c("No Premarital Sex", "Premarital Sex")
 # Display the matrix
 matrix_counts
 
-
 # Performing a fisher exact test:
 fisher.test(matrix_counts)
+
+
+
+# Fit a logistic regression model where the outcome is treatment. Obtain the propensity score for each individual.
+
+
+# Load necessary libraries
+library(tidyverse)
+library(ggplot2)
+
+# Load the data
+project_data <- read.csv("project_data.csv")
+
+# Remove rows with NAs in the outcome variable (premarital)
+project_data <- project_data %>% drop_na(premarital)
+
+# Remove rows with missing values in discuss_topic8
+project_data <- project_data %>% drop_na(discuss_topic8)
+
+# Fit a propensity score model using logistic regression
+psmodel <- glm(discuss_topic8 ~ AGER + RACE + PARMARR + INTACT18 + TOTINCR + HIEDUC + RELRAISD + ATTND14 + EVRMARRY + ONOWN18 + VRY1STAG + topics_discussed_count + discuss_topic1 +
+                   discuss_topic2 + discuss_topic3 + discuss_topic4 + discuss_topic5 + discuss_topic6, 
+               family = binomial(), data = project_data)
+
+# Show coefficients etc
+summary(psmodel)
+
+# Create propensity score
+pscore <- psmodel$fitted.values
+
+# Check overlap THIS IS BAD
+histdat <- tibble(pscore = pscore, 
+                  treatment = recode(project_data$discuss_topic8, 
+                                     '0' = 'No Treatment', 
+                                     '1' = 'Treatment'))
+g <- ggplot(histdat, aes(x = pscore)) +
+  geom_histogram(color = "black", fill = "white") + 
+  facet_grid(project_data$discuss_topic8 ~ .) +  # Facet by treatment variable
+  theme(legend.position = "none")
+g
+
+
+#exclude any individuals in treated group with propensity score
+#greater than the max in the control group
+max(pscore[project_data$discuss_topic8==0])
+max(pscore[project_data$discuss_topic8==1])
+
+#exclude any individuals in control group with propensity score 
+#smaller than the min in the treated group
+min(pscore[project_data$discuss_topic8==0])
+min(pscore[project_data$discuss_topic8==1])
+
+
+#matching WITH caliper
+logit <- function(p){log(p)-log(1-p)}
+psmatch <- Match(Tr=project_data$discuss_topic8, M=1, X=logit(pscore), replace=FALSE, caliper=.2)
+matched <- project_data[c(psmatch$index.treated, psmatch$index.control),]
+
+#get standardized differences
+matchedtab2<-CreateTableOne(vars=xvars, strata ="treatment", data=matched, test = FALSE)
+print(matchedtab2, smd = TRUE)

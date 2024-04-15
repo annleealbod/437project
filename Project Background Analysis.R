@@ -11,10 +11,17 @@ library(webshot2)
 library(tidyverse)
 library(MatchIt)
 library(Matching)
+library(tools)
 
 
 # Load SAS data:
-project_data <- read_csv("project_data.csv")
+project_data <- read.csv("project_data.csv")
+
+# Remove rows with NAs in the outcome variable (premarital)
+project_data <- project_data %>% drop_na(premarital)
+
+# Remove rows with missing values in discuss_topic8
+project_data <- project_data %>% drop_na(discuss_topic8)
 
 # Make a subset of the data that has only the variables of interest:
 subdata <- subset(project_data, select = c(AGER, RACE, PARMARR, INTACT18, TOTINCR, HIEDUC, RELRAISD, ATTND14, RELIGION, EVRMARRY, ONOWN18, VRY1STAG, topics_discussed_count, discuss_topic1,
@@ -23,6 +30,11 @@ discuss_topic2, discuss_topic3, discuss_topic4, discuss_topic5, discuss_topic6, 
 # Remove the null values from premarital (due to missing answers):
 subdata <- subdata[!is.na(subdata$premarital), ]
 
+# Filter out the nevers and refused
+subdata <- subset(subdata, !(RELRAISD %in% c("Don't know", "Refused")))
+subdata <- subset(subdata, ATTND14 != "Refused")
+subdata <- subset(subdata, ATTND14 != "Missing")
+
 # Setting up a render function for logical variables to save space:
 rndr <- function(x, ...) {
   y <- render.default(x, ...)
@@ -30,7 +42,7 @@ rndr <- function(x, ...) {
 }
 
 # Make variables into factors/logicals as necessary:
-subdata$discuss_topic8 <- factor(subdata$discuss_topic8, levels = c(0,1), labels = c("Taught to Abstain From PS", "Not Taught to Abstain From PS"))
+subdata$discuss_topic8 <- factor(subdata$discuss_topic8, levels = c(0,1), labels = c("Taught Abstinence", "Not Taught Abstinence"))
 subdata$discuss_topic1 <- as.logical(subdata$discuss_topic1)
 subdata$discuss_topic2 <- as.logical(subdata$discuss_topic2)
 subdata$discuss_topic3 <- as.logical(subdata$discuss_topic3)
@@ -38,6 +50,12 @@ subdata$discuss_topic4 <- as.logical(subdata$discuss_topic4)
 subdata$discuss_topic5 <- as.logical(subdata$discuss_topic5)
 subdata$discuss_topic6 <- as.logical(subdata$discuss_topic6)
 subdata$premarital <- as.logical(subdata$premarital)
+subdata$EVRMARRY <- as.logical(subdata$EVRMARRY == "EVER MARRIED")
+subdata$ONOWN18 <- as.logical(subdata$ONOWN18 == "Yes")
+subdata$PARMARR <- as.logical(subdata$PARMARR == "Yes")
+subdata$INTACT18 <- as.logical(subdata$INTACT18 == "Yes")
+
+
 
 # Reorder certain variable factor levels:
 inc_order <- c("Under $5000", "$5000-$7499", "$7500-$9999", "$10,000-$12,499", "$12,500-$14,999", "$15,000-$19,999", 
@@ -47,26 +65,24 @@ subdata$TOTINCR <- factor(subdata$TOTINCR, levels = inc_order)
 
 race_order <- c("WHITE", "BLACK", "OTHER")
 subdata$RACE <- factor(subdata$RACE, levels = race_order)
-
-parmar_order <- c("Yes", "No", "Don't Know", "Refused")
-subdata$PARMARR <- factor(subdata$PARMARR, levels = parmar_order)
-
-intact_order <- c("Yes", "No", "Don't Know")
-subdata$INTACT18 <- factor(subdata$INTACT18, levels = intact_order)
+levels(subdata$RACE) <- toTitleCase(tolower(levels(subdata$RACE)))
 
 educ_order <- c("9TH GRADE OR LESS", "10TH GRADE", "11TH GRADE", "12TH GRADE, NO DIPLOMA (NOR GED)", "HIGH SCHOOL GRADUATE (DIPLOMA OR GED)",
 "SOME COLLEGE BUT NO DEGREE", "ASSOCIATE DEGREE IN COLLEGE/UNIVERSITY", "BACHELOR'S DEGREE", "MASTER'S DEGREE", "DOCTORATE DEGREE")
 subdata$HIEDUC <- factor(subdata$HIEDUC, levels = educ_order)
+# Rename the levels to lowercase
+levels(subdata$HIEDUC) <- toTitleCase(tolower(levels(subdata$HIEDUC)))
 
 rel_order <- c("Catholic", "Baptist/Southern Baptist", "Methodist, Lutheran, Presbyterian, Episcopal", "Fundamentalist Protestant",
-"Other Protestant denomination","Protestant - No specific denomination", "Other religion", "No religion", "Don't know", "Refused")
+"Other Protestant denomination","Protestant - No specific denomination", "Other religion", "No religion", "Don't know")
 subdata$RELRAISD <- factor(subdata$RELRAISD, levels = rel_order)
 
-chufreq_order <- c("More than once a week", "Once a week", "2-3 times a month", "Once a month (about 12 times a year)", "3-11 times a year", "Once or twice a year",
-"Never", "Refused")
+chufreq_order <- c("More than once a week", "Once a week", "2-3 times a month", "Once a month (about 12 times a year)", "3-11 times a year", "Once or twice a year")
 subdata$ATTND14 <- factor(subdata$ATTND14, levels = chufreq_order)
 
-
+age_order <- c("15 YEARS", "16 YEARS", "17 YEARS", "18 YEARS", "19 YEARS", "20 YEARS", "21 YEARS", "22 YEARS", "23 YEARS", "24 YEARS", "25 YEARS")
+subdata$AGER <- factor(subdata$AGER, levels = age_order)
+levels(subdata$AGER) <- tolower(levels(subdata$AGER))
 
 # Label variables:
 label(subdata$AGER) <- "Age at Time of Survey"
@@ -78,7 +94,7 @@ label(subdata$HIEDUC) <- "Highest Level of Education Achieved"
 label(subdata$RELRAISD) <- "Religion Raised In"
 label(subdata$ATTND14) <- "Frequency of Church Attendance at 14"
 label(subdata$RELIGION) <- "Current Religious Affiliation"
-label(subdata$EVRMARRY) <- "Ever Been Married"
+label(subdata$EVRMARRY) <- "Have Been Married"
 label(subdata$ONOWN18) <- "Lived on Their Own Before 18"
 label(subdata$VRY1STAG) <- "Age at First Intercourse"
 label(subdata$topics_discussed_count) <- "How Many Sexual Topics Taught"
@@ -119,20 +135,6 @@ fisher.test(matrix_counts)
 
 # Fit a logistic regression model where the outcome is treatment. Obtain the propensity score for each individual.
 
-
-# Load necessary libraries
-library(tidyverse)
-library(ggplot2)
-
-# Load the data
-project_data <- read.csv("project_data.csv")
-
-# Remove rows with NAs in the outcome variable (premarital)
-project_data <- project_data %>% drop_na(premarital)
-
-# Remove rows with missing values in discuss_topic8
-project_data <- project_data %>% drop_na(discuss_topic8)
-
 # Fit a propensity score model using logistic regression
 psmodel <- glm(discuss_topic8 ~ AGER + RACE + PARMARR + INTACT18 + TOTINCR + HIEDUC + RELRAISD + ATTND14 + EVRMARRY + ONOWN18 + VRY1STAG + topics_discussed_count + discuss_topic1 +
                    discuss_topic2 + discuss_topic3 + discuss_topic4 + discuss_topic5 + discuss_topic6, 
@@ -144,14 +146,14 @@ summary(psmodel)
 # Create propensity score
 pscore <- psmodel$fitted.values
 
-# Check overlap THIS IS BAD
+# Check overlap THIS IS BAD (WHY?)
 histdat <- tibble(pscore = pscore, 
                   treatment = recode(project_data$discuss_topic8, 
                                      '0' = 'No Treatment', 
                                      '1' = 'Treatment'))
 g <- ggplot(histdat, aes(x = pscore)) +
   geom_histogram(color = "black", fill = "white") + 
-  facet_grid(project_data$discuss_topic8 ~ .) +  # Facet by treatment variable
+  facet_grid(treatment ~ .) +  # Facet by treatment variable
   theme(legend.position = "none")
 g
 
@@ -167,11 +169,41 @@ min(pscore[project_data$discuss_topic8==0])
 min(pscore[project_data$discuss_topic8==1])
 
 
-#matching WITH caliper
+# Calculate the maximum propensity score in the control group
+max_control <- max(pscore[project_data$discuss_topic8 == 0])
+
+# Calculate the minimum propensity score in the treated group
+min_treated <- min(pscore[project_data$discuss_topic8 == 1])
+
+# Count the number of individuals in the treated group with propensity score greater than max_control
+excluded_treated <- sum(pscore[project_data$discuss_topic8 == 1] > max_control)
+
+# Count the number of individuals in the control group with propensity score smaller than min_treated
+excluded_control <- sum(pscore[project_data$discuss_topic8 == 0] < min_treated)
+
+# Report the number of excluded individuals (HOW DO I INCLUDE THIS IN THE REPORT? QMD or JUST WRITE?)
+cat("Number of individuals excluded from the treated group:", excluded_treated, "\n")
+cat("Number of individuals excluded from the control group:", excluded_control, "\n")
+
+
+
+#matching WITHOUT caliper (SHOULD I TRY CALIPER? 2 * what SD?)
 logit <- function(p){log(p)-log(1-p)}
-psmatch <- Match(Tr=project_data$discuss_topic8, M=1, X=logit(pscore), replace=FALSE, caliper=.2)
+psmatch <- Match(Tr=project_data$discuss_topic8, M=1, X=logit(pscore), replace=FALSE)
 matched <- project_data[c(psmatch$index.treated, psmatch$index.control),]
 
-#get standardized differences
-matchedtab2<-CreateTableOne(vars=xvars, strata ="treatment", data=matched, test = FALSE)
-print(matchedtab2, smd = TRUE)
+xvars <- c("AGER", "RACE", "PARMARR", "INTACT18", "TOTINCR", "HIEDUC", "RELRAISD", "ATTND14", "RELIGION", "EVRMARRY", "ONOWN18", "VRY1STAG", "topics_discussed_count", "discuss_topic1",
+"discuss_topic2", "discuss_topic3", "discuss_topic4", "discuss_topic5", "discuss_topic6")
+
+#evaluate matching via table 1
+matchedtab1<-CreateTableOne(vars=xvars, strata ="discuss_topic8", data=matched, test = FALSE)
+print(matchedtab1, smd = TRUE)
+
+
+#outcome analysis
+y_trt<-matched$premarital[matched$discuss_topic8==1]
+y_con<-matched$premarital[matched$discuss_topic8==0]
+
+diedtab <- table(y_trt, y_con)
+diedtab
+mcnemar.test(diedtab)

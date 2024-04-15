@@ -4,6 +4,10 @@ library(table1)
 library(kableExtra)
 library(readr)
 library(tableone)
+library(ggplot2)
+library(kableExtra)
+library(gridExtra)
+library(webshot2)
 library(tidyverse)
 library(MatchIt)
 library(Matching)
@@ -92,6 +96,8 @@ discuss_topic2 + discuss_topic3 + discuss_topic4 + discuss_topic5 + discuss_topi
 
 
 
+
+
 # Now on to evidence of association:
 # Create a 2x2 matrix
 table_counts <- table(subdata$discuss_topic8, subdata$premarital)
@@ -104,6 +110,7 @@ colnames(matrix_counts) <- c("No Premarital Sex", "Premarital Sex")
 
 # Display the matrix
 matrix_counts
+
 
 # Performing a fisher exact test:
 fisher.test(matrix_counts)

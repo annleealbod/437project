@@ -74,7 +74,7 @@ subdata$HIEDUC <- factor(subdata$HIEDUC, levels = educ_order)
 levels(subdata$HIEDUC) <- toTitleCase(tolower(levels(subdata$HIEDUC)))
 
 rel_order <- c("Catholic", "Baptist/Southern Baptist", "Methodist, Lutheran, Presbyterian, Episcopal", "Fundamentalist Protestant",
-"Other Protestant denomination","Protestant - No specific denomination", "Other religion", "No religion", "Don't know")
+"Other Protestant denomination","Protestant - No specific denomination", "Other religion", "No religion")
 subdata$RELRAISD <- factor(subdata$RELRAISD, levels = rel_order)
 
 chufreq_order <- c("More than once a week", "Once a week", "2-3 times a month", "Once a month (about 12 times a year)", "3-11 times a year", "Once or twice a year")
@@ -107,12 +107,10 @@ label(subdata$discuss_topic6) <- "Taught How to Use a Condom"
 label(subdata$premarital) <- "Had Premarital Sex"
 
 # Actually build the Table 1:
-my_table <- table1(~ AGER + RACE + PARMARR + INTACT18 + TOTINCR + HIEDUC + RELRAISD + ATTND14 + EVRMARRY + ONOWN18 + VRY1STAG + topics_discussed_count + discuss_topic1 +
+table_one <- table1(~ AGER + RACE + PARMARR + INTACT18 + TOTINCR + HIEDUC + RELRAISD + ATTND14 + EVRMARRY + ONOWN18 + VRY1STAG + topics_discussed_count + discuss_topic1 +
 discuss_topic2 + discuss_topic3 + discuss_topic4 + discuss_topic5 + discuss_topic6 | discuss_topic8, data = subdata, render = rndr, render.continuous=c("Mean (SD)"="MEAN (SD)"))
 
-
-
-
+table_one
 
 # Now on to evidence of association:
 # Create a 2x2 matrix
@@ -132,21 +130,21 @@ matrix_counts
 fisher.test(matrix_counts)
 
 
-
-# Fit a logistic regression model where the outcome is treatment. Obtain the propensity score for each individual.
+# Propensity scores, matching, and outcome analysis:
 
 # Fit a propensity score model using logistic regression
-psmodel <- glm(discuss_topic8 ~ AGER + RACE + PARMARR + INTACT18 + TOTINCR + HIEDUC + RELRAISD + ATTND14 + EVRMARRY + ONOWN18 + VRY1STAG + topics_discussed_count + discuss_topic1 +
-                   discuss_topic2 + discuss_topic3 + discuss_topic4 + discuss_topic5 + discuss_topic6, 
+psmodel <- glm(discuss_topic8 ~ RELRAISD + ATTND14 + discuss_topic1 + discuss_topic2 +
+ discuss_topic3 + discuss_topic4 + discuss_topic5 + discuss_topic6, 
                family = binomial(), data = project_data)
 
 # Show coefficients etc
 summary(psmodel)
 
+# compare treatement to other variables
 # Create propensity score
 pscore <- psmodel$fitted.values
 
-# Check overlap THIS IS BAD (WHY?)
+# Check overlap
 histdat <- tibble(pscore = pscore, 
                   treatment = recode(project_data$discuss_topic8, 
                                      '0' = 'No Treatment', 
@@ -168,6 +166,7 @@ max(pscore[project_data$discuss_topic8==1])
 min(pscore[project_data$discuss_topic8==0])
 min(pscore[project_data$discuss_topic8==1])
 
+# Now to calculate how many were excluded:
 
 # Calculate the maximum propensity score in the control group
 max_control <- max(pscore[project_data$discuss_topic8 == 0])
@@ -186,24 +185,39 @@ cat("Number of individuals excluded from the treated group:", excluded_treated, 
 cat("Number of individuals excluded from the control group:", excluded_control, "\n")
 
 
-
-#matching WITHOUT caliper (SHOULD I TRY CALIPER? 2 * what SD?)
+#matching WITHOUT caliper
 logit <- function(p){log(p)-log(1-p)}
-psmatch <- Match(Tr=project_data$discuss_topic8, M=1, X=logit(pscore), replace=FALSE)
-matched <- project_data[c(psmatch$index.treated, psmatch$index.control),]
+psmatch1 <- Match(Tr=project_data$discuss_topic8, M=1, X=logit(pscore), replace=FALSE)
+matched1 <- project_data[c(psmatch1$index.treated, psmatch1$index.control),]
 
-xvars <- c("AGER", "RACE", "PARMARR", "INTACT18", "TOTINCR", "HIEDUC", "RELRAISD", "ATTND14", "RELIGION", "EVRMARRY", "ONOWN18", "VRY1STAG", "topics_discussed_count", "discuss_topic1",
+xvars <- c("RELRAISD", "ATTND14","discuss_topic1",
 "discuss_topic2", "discuss_topic3", "discuss_topic4", "discuss_topic5", "discuss_topic6")
 
 #evaluate matching via table 1
-matchedtab1<-CreateTableOne(vars=xvars, strata ="discuss_topic8", data=matched, test = FALSE)
+matchedtab1<-CreateTableOne(vars=xvars, strata ="discuss_topic8", data=matched1, test = FALSE)
 print(matchedtab1, smd = TRUE)
 
 
 #outcome analysis
-y_trt<-matched$premarital[matched$discuss_topic8==1]
-y_con<-matched$premarital[matched$discuss_topic8==0]
+y_trt1<-matched1$premarital[matched1$discuss_topic8==1]
+y_con1<-matched1$premarital[matched1$discuss_topic8==0]
 
-diedtab <- table(y_trt, y_con)
-diedtab
-mcnemar.test(diedtab)
+v1 <- table(y_trt1, y_con1)
+mcnemar.test(v1)
+
+sd_pscore <- sd(pscore)
+
+#matching WITH caliper
+psmatch2 <- Match(Tr=project_data$discuss_topic8, M=1, X=logit(pscore), replace=FALSE, caliper=(.2*sd_pscore))
+matched2 <- project_data[c(psmatch2$index.treated, psmatch2$index.control),]
+
+#get standardized differences
+matchedtab2<-CreateTableOne(vars=xvars, strata ="discuss_topic8", data=matched2, test = FALSE)
+print(matchedtab2, smd = TRUE)
+
+#outcome analysis
+y_trt2<-matched2$premarital[matched2$discuss_topic8==1]
+y_con2<-matched2$premarital[matched2$discuss_topic8==0]
+
+ver2 <- table(y_trt2, y_con2)
+mcnemar.test(ver2)
